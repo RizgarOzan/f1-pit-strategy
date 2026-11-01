@@ -119,8 +119,14 @@ def actual_stints(laps: pd.DataFrame, driver: int, total_laps: int | None = None
     out = []
     for _, g in d.groupby("stint"):
         g = g.sort_values("lap_number")
-        out.append(Stint(g["compound"].iloc[0], int(g["lap_number"].iloc[0]),
-                         int(g["lap_number"].iloc[-1]), int(g["tyre_age"].iloc[0])))
+        s = Stint(g["compound"].iloc[0], int(g["lap_number"].iloc[0]),
+                  int(g["lap_number"].iloc[-1]), int(g["tyre_age"].iloc[0]))
+        prev = out[-1] if out else None
+        if prev and s.compound == prev.compound and s.start_age == prev.start_age + prev.laps:
+            # Same set still running: the feed split a stint, usually behind a safety car.
+            out[-1] = Stint(prev.compound, prev.first_lap, s.last_lap, prev.start_age)
+        else:
+            out.append(s)
     if out and total_laps:  # the stints feed can stop a lap short of the flag
         last = out[-1]
         out[-1] = Stint(last.compound, last.first_lap, total_laps, last.start_age)

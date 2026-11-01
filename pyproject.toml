@@ -1,6 +1,6 @@
 [project]
 name = "f1strat"
-version = "0.1.0"
+version = "0.2.0"
 description = "Find the fastest pit strategy for an F1 race from OpenF1 timing data"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -8,7 +8,8 @@ license = "MIT"
 dependencies = ["numpy", "pandas", "scikit-learn", "matplotlib"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+app = ["streamlit>=1.40", "plotly>=5.20"]
+dev = ["pytest", "ruff"]
 
 [project.scripts]
 f1strat = "f1strat.__main__:main"
@@ -18,4 +19,11 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

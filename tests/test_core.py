@@ -14,7 +14,8 @@ def synthetic_laps(seed=0, noise=0.15):
     rows = []
     # Fuel is only separable from wear because cars run the same compound at
     # different points of the race, so the drivers here split strategies.
-    orders = [("SOFT", "MEDIUM", "HARD"), ("HARD", "MEDIUM", "SOFT"), ("MEDIUM", "HARD", "SOFT"), ("HARD", "SOFT", "MEDIUM")]
+    orders = [("SOFT", "MEDIUM", "HARD"), ("HARD", "MEDIUM", "SOFT"),
+              ("MEDIUM", "HARD", "SOFT"), ("HARD", "SOFT", "MEDIUM")]
     for (drv, pace), order in zip([(1, 90.0), (16, 90.3), (44, 90.6), (63, 90.9)], orders):
         for compound, (first, last) in zip(order, [(2, 18), (19, 37), (38, 55)]):
             for lap in range(first, last + 1):

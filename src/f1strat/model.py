@@ -30,7 +30,7 @@ class TyreModel:
     max_age: dict[str, int]  # longest clean stint seen per compound
 
     @classmethod
-    def fit(cls, laps: pd.DataFrame, min_laps: int = 30) -> "TyreModel":
+    def fit(cls, laps: pd.DataFrame, min_laps: int = 30) -> TyreModel:
         counts = laps["compound"].value_counts()
         compounds = [c for c in ("SOFT", "MEDIUM", "HARD") if counts.get(c, 0) >= min_laps]
         laps = laps[laps["compound"].isin(compounds)]
@@ -85,19 +85,22 @@ def _design(laps: pd.DataFrame, compounds: list[str]):
     return X, drivers
 
 
-def pit_loss(race_laps: pd.DataFrame, model: TyreModel) -> float | None:
-    """Time a stop costs vs staying out: (in-lap + out-lap) minus two normal laps.
+def pit_losses(race_laps: pd.DataFrame, model: TyreModel) -> list[float]:
+    """Time each green-flag stop cost vs staying out: (in-lap + out-lap) minus two normal laps.
 
     Measured from the race itself, so it already includes this track's pit lane
-    length and speed limit. Stops under safety car are skipped by requiring
-    the out-lap's neighbours to be clean.
+    length and speed limit. Stops under safety car are skipped: the lap before
+    must be clean and neither the in-lap nor the out-lap neutralised.
     """
+    from .openf1 import neutralised_laps
+
+    neutral = set(neutralised_laps(race_laps))
     laps = race_laps.set_index(["driver_number", "lap_number"]).sort_index()
     losses = []
     for (drv, n), row in laps[laps["pit_in"]].iterrows():
         nxt = laps.loc[(drv, n + 1)] if (drv, n + 1) in laps.index else None
         before = laps.loc[(drv, n - 1)] if (drv, n - 1) in laps.index else None
-        if nxt is None or before is None or not before["clean"]:
+        if nxt is None or before is None or not before["clean"] or {n, n + 1} & neutral:
             continue
         if nxt["compound"] not in model.compounds or row["compound"] not in model.compounds:
             continue
@@ -108,11 +111,37 @@ def pit_loss(race_laps: pd.DataFrame, model: TyreModel) -> float | None:
             continue
         normal = (model.lap_time(row["compound"], row["tyre_age"], n, pace)
                   + model.lap_time(nxt["compound"], nxt["tyre_age"], n + 1, pace))
-        losses.append(row["lap_duration"] + nxt["lap_duration"] - normal)
-    if len(losses) < 3:
-        return None
-    # Slow stops (stuck wheel nut, unsafe release hold) are real but not the plan.
-    return float(np.percentile(losses, 40))
+        losses.append(float(row["lap_duration"] + nxt["lap_duration"] - normal))
+    return losses
+
+
+def pit_loss(race_laps: pd.DataFrame, model: TyreModel) -> float | None:
+    """The planning number: 40th percentile of the measured green-flag stops.
+
+    Slow stops (stuck wheel nut, unsafe release hold) are real but not the plan.
+    """
+    losses = pit_losses(race_laps, model)
+    return float(np.percentile(losses, 40)) if len(losses) >= 3 else None
+
+
+def neutral_pit_losses(race_laps: pd.DataFrame, neutral: list[int]) -> list[float]:
+    """What a stop cost under a safety car or VSC, against cars that stayed out.
+
+    In-lap plus out-lap minus the field's median time on those two laps, using
+    only stops where both laps were neutralised.
+    """
+    neutral = set(neutral)
+    field = race_laps[~race_laps["pit_in"] & ~race_laps["is_pit_out_lap"].fillna(False).astype(bool)]
+    median = field.groupby("lap_number")["lap_duration"].median()
+    laps = race_laps.set_index(["driver_number", "lap_number"])["lap_duration"]
+    out = []
+    for drv, n in race_laps.loc[race_laps["pit_in"], ["driver_number", "lap_number"]].itertuples(index=False):
+        if n not in neutral or n + 1 not in neutral or (drv, n + 1) not in laps.index:
+            continue
+        t = laps[(drv, n)] + laps[(drv, n + 1)] - median.get(n, np.nan) - median.get(n + 1, np.nan)
+        if np.isfinite(t):
+            out.append(float(t))
+    return out
 
 
 def evaluate(laps: pd.DataFrame, folds: int = 5) -> dict[str, float]:
