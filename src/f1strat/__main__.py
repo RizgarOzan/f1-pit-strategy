@@ -45,7 +45,7 @@ def main(argv=None) -> None:
 
     if a.evaluate:
         e = evaluate(clean)
-        print(f"\nLap-time error (MAE), this model vs gradient boosting:")
+        print("\nLap-time error (MAE), this model vs gradient boosting:")
         older = f"tyres older than {e['age_cut']:.0f} laps"
         print(f"  {'held-out stints':<26}{e['interp_phys']:.3f} s  vs  {e['interp_gbm']:.3f} s")
         print(f"  {older:<26}{e['extrap_phys']:.3f} s  vs  {e['extrap_gbm']:.3f} s")

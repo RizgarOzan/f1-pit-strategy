@@ -139,7 +139,6 @@ def evaluate(laps: pd.DataFrame, folds: int = 5) -> dict[str, float]:
         "extrap_phys": extrap_phys,
         "extrap_gbm": extrap_gbm,
         "age_cut": float(cut),
-        "n_laps": len(laps),
     }
 
 

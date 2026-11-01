@@ -50,7 +50,6 @@ class Race:
     name: str
     total_laps: int
     laps: pd.DataFrame       # every lap with compound, tyre age and a `clean` flag
-    pit_lane: pd.Series      # pit lane time per stop, seconds
     drivers: dict[int, str]  # number -> acronym
     finish_order: list[int]  # classified finishers, winner first
 
@@ -84,13 +83,11 @@ def load_race(year: int, location: str) -> Race:
 
     finished = results[results["number_of_laps"] == results["number_of_laps"].max()]
     order = finished.sort_values("position")["driver_number"].tolist()
-    lane = pits["lane_duration"] if "lane_duration" in pits else pits.get("pit_duration")
     return Race(
         name=f"{year} {s['circuit_short_name']}",
         # The laps feed sometimes carries a phantom extra lap; the classification doesn't.
         total_laps=int(results["number_of_laps"].max()),
         laps=laps,
-        pit_lane=pd.to_numeric(lane, errors="coerce").dropna(),
         drivers=drivers,
         finish_order=order,
     )

@@ -28,16 +28,17 @@ Lap-time error (MAE), this model vs gradient boosting:
   tyres older than 13 laps  0.650 s  vs  0.611 s
 
  #  plan     stops  pit lap    window (within 1 s)       gap
- 1  M-H          1  25         22-31                 fastest
+ 1  M-H          1  25         22-25                 fastest
  2  M-H-H        2  15, 34     11-20, 30-38          +14.0 s
  3  M-M-H        2  17, 34     12-22, 29-38          +18.2 s
 
 Winner LEC ran M1-15 H16-53: +5.3 s vs the best plan on the same pace.
+  (The model knows nothing about safety cars, traffic or undercuts; a gap here is where the race itself decided.)
 ```
 
 The race argument takes a location, circuit or country name (`Monza`, `Sakhir`, `Spain`). A typo prints the list of that season's circuits. `--driver VER` plans around one driver's pace instead of the field median, and `--pit-loss 21` overrides the measured stop cost. The first run downloads under 1 MB per race into `.cache/`; after that it works offline.
 
-Leclerc's Monza win is a good example of what the last line means. The model says pitting on lap 15 and running 38 laps on hards cost him about 5 seconds against a lap-25 stop. Ferrari did it anyway because the one-stop kept him ahead of the McLarens, who stopped twice. Track position is outside this model, and that 5 s is roughly what Ferrari paid for it.
+Leclerc's Monza win is a good example of what the last line means. The model says pitting on lap 15 and running 38 laps on hards cost him about 5 seconds against a lap-25 stop. Ferrari did it anyway because the one-stop kept him ahead of the McLarens, who stopped twice. Track position is outside this model, and that 5 s is roughly what Ferrari paid for it. The fastest plan's window ends at lap 25 because the longest clean medium stint in the data was 20 laps and the stint cap below allows 5 more.
 
 ## How it works
 
@@ -53,7 +54,7 @@ with one least-squares solve over the whole field. Every number means something 
 
 **Pit loss.** For every stop under green, in-lap plus out-lap minus two predicted normal laps. I take the 40th percentile so a stuck wheel nut doesn't set the plan. This lands at 20-26 s across the races below.
 
-**Search.** A stint's time has a closed form under a linear model, so every one- and two-stop plan for a 70-lap race is scored in about 0.2 s. Plans must use two dry compounds. A stint can run at most 5 laps past the longest stint the data actually saw on that compound, because a straight line has no way of knowing where a tyre falls off a cliff. The window column is the range of laps for each stop that keeps the plan within 1 s of its best, with the other stop held fixed.
+**Search.** A stint's time has a closed form under a linear model, so every one- and two-stop plan for a 70-lap race is scored in under 0.3 s. Plans must use two dry compounds. A stint can run at most 5 laps past the longest stint the data actually saw on that compound, because a straight line has no way of knowing where a tyre falls off a cliff. The window column is the range of laps for each stop that keeps the plan within 1 s of its best, with the other stop held fixed.
 
 ## Why not gradient boosting?
 
